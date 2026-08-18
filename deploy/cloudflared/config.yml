@@ -1,0 +1,22 @@
+# Cloudflare Tunnel configuration.
+#
+# This routes the named tunnel (TUNNEL_NAME in .env) to the local n8n
+# instance running in the same Compose network. cloudflared reaches n8n by
+# its Compose service name, so traffic never leaves the Docker network to
+# reach the backend.
+#
+# A quick (`trycloudflare.com`) tunnel is intentionally not used here because
+# it returns a random hostname. This setup provisions a fixed subdomain,
+# n8n.flynnpedroa.engineer, via the Cloudflare API.
+
+tunnel: ${TUNNEL_NAME}
+
+credentials-file: /home/nonroot/.cloudflared/${TUNNEL_NAME}.json
+
+ingress:
+  # Full n8n instance: editor UI + public API.
+  - hostname: n8n.flynnpedroa.engineer
+    service: http://n8n:5678
+    # WebSockets are used by the editor UI; cloudflared proxies them by default.
+  # Cloudflared requires a catch-all catch-all rule as the final entry.
+  - service: http_status:404

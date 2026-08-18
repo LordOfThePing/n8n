@@ -1,0 +1,61 @@
+# n8n + Cloudflare Tunnel deployment
+#
+# Exposes the full n8n instance (editor UI + public API) at
+# https://n8n.flynnpedroa.engineer via a named Cloudflare Tunnel.
+#
+# Prerequisites (see README.md in this folder):
+#   - A Cloudflare API token with Zone:DNS:Edit and Tunnel permissions on
+#     the flynnpedroa.engineer zone.
+#   - A populated .env file (copy .env.example -> .env).
+#
+# To start:   docker compose --env-file .env up -d
+# To stop:    docker compose --env-file .env down
+
+name: n8n-cloudflare
+
+services:
+  # ---- n8n backend -----------------------------------------------------------
+  n8n:
+    image: docker.io/n8nio/n8n:${N8N_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${N8N_LOCAL_PORT:-5678}:5678'
+    environment:
+      # Public URL: n8n binds to the path that Cloudflare hands off, so only
+      # the hostname overrides are needed. WEBHOOK_URL is set explicitly so
+      # generated webhook URLs point at the public host.
+      N8N_HOST: n8n.flynnpedroa.engineer
+      N8N_PROTOCOL: https
+      WEBHOOK_URL: https://n8n.flynnpedroa.engineer/
+      N8N_PORT: '5678'
+      # Credentials/encryption secrets — only the vars n8n needs are passed so
+      # the Cloudflare API token never reaches the n8n container.
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  # ---- Cloudflare Tunnel sidecar --------------------------------------------
+  cloudflared:
+    image: cloudflare/cloudflared:${CLOUDFLARED_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      - n8n
+    command:
+      - tunnel
+      - --config
+      - /etc/cloudflared/config.yml
+      - run
+      - ${TUNNEL_NAME}
+    environment:
+      # config.yml uses ${TUNNEL_NAME} (env-substituted by cloudflared at run
+      # time) for the credentials-file path, so the name must be present in the
+      # container's environment.
+      TUNNEL_NAME: ${TUNNEL_NAME}
+    volumes:
+      # Tunnel credentials JSON written by scripts/provision-tunnel.ps1.
+      - cloudflared_cert:/home/nonroot/.cloudflared
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+
+volumes:
+  n8n_data:
+  cloudflared_cert:
