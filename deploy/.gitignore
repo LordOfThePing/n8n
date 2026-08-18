@@ -2,7 +2,3 @@
 .env
 .env.*
 !.env.example
-
-# Tunnel credentials are written into a docker volume, but guard against any
-# that land here.
-*.json
