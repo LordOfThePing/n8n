@@ -44,12 +44,16 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:${CLOUDFLARED_VERSION:-latest}
     restart: unless-stopped
+    # Share the n8n container's network namespace. The tunnel's dashboard route
+    # is `http://localhost:5678`; with a shared namespace, `localhost` inside
+    # cloudflared IS the n8n container, so that route resolves correctly.
+    # No port mapping is needed here — cloudflared only makes outbound
+    # connections to Cloudflare's edge.
+    network_mode: service:n8n
     depends_on:
       - n8n
     # Runs the tunnel using its token from the TUNNEL_TOKEN environment
-    # variable (the standard Cloudflare Docker pattern). cloudflared itself is
-    # reached at n8n:5678 on the same Compose network, so the tunnel's DNS
-    # route uses http://localhost:5678.
+    # variable (the standard Cloudflare Docker pattern).
     command: tunnel run
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
