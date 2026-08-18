@@ -46,13 +46,13 @@ services:
     restart: unless-stopped
     depends_on:
       - n8n
-    # `--token` mode: connects to the dashboard tunnel using its tunnel token.
-    # cloudflared itself is reached at n8n:5678 on the same Compose network, so
-    # the tunnel DNS route uses http://localhost:5678.
-    command:
-      - tunnel
-      - --token
-      - ${TUNNEL_TOKEN}
+    # Runs the tunnel using its token from the TUNNEL_TOKEN environment
+    # variable (the standard Cloudflare Docker pattern). cloudflared itself is
+    # reached at n8n:5678 on the same Compose network, so the tunnel's DNS
+    # route uses http://localhost:5678.
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
 
 volumes:
   n8n_data:
