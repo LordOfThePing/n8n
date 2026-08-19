@@ -58,5 +58,21 @@ services:
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
 
+  # ---- MongoDB (local, for Meta WhatsApp message storage) --------------------
+  mongodb:
+    image: docker.io/mongo:${MONGO_VERSION:-7}
+    restart: unless-stopped
+    # Local-only: bound to 127.0.0.1, never exposed publicly. Reach it from the
+    # host (or integration paths that run on the host) at 127.0.0.1:27017.
+    ports:
+      - '127.0.0.1:27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITIAL_DB:-whatsapp}
+    volumes:
+      - mongo_data:/data/db
+
 volumes:
   n8n_data:
+  mongo_data:

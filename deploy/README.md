@@ -63,6 +63,17 @@ deploy/
 4. Copy the **token** shown for the tunnel (also under `Networks → Tunnels → <tunnel>
    → Configure → Token`). It looks like `eyJ...`.
 
+> **Critical — the DNS record must be a CNAME to the tunnel, not an A/AAAA record.**
+> Adding the **Public Hostname** above makes Cloudflare create a `CNAME →
+> <tunnel-id>.cfargotunnel.com` for the hostname automatically. If a plain
+> **A/AAAA record** (even proxied) already exists for `n8n`, delete it — Cloudflare
+> Tunnel has no origin IP, so an A record gives Cloudflare nothing to route to and
+> you'll get **Cloudflare error 1033 / 530 ("Origin DNS error")**. Verify with:
+> ```bash
+> dig n8n.flynnpedroa.engineer CNAME +short   # must show <tunnel-id>.cfargotunnel.com
+> ```
+
+
 **B. On the server (once):**
 
 ```bash
@@ -107,7 +118,8 @@ When cloudflared connects, the log shows `Registered tunnel connection` and a
 | ------- | ----------- |
 | Cloudflared `Cannot determine ... origin certificate` | The old config.yml/credentials approach is still running. Rebuild from the new compose: `./scripts/deploy.sh down && ./scripts/deploy.sh up`. |
 | Cloudflared `error parsing tunnel ID` / no connection | `TUNNEL_TOKEN` empty or wrong; confirm the `eyJ...` token is set in `.env` and that the dashboard tunnel exists. |
-| DNS works but site errors | Tunnel connected but the dashboard public-hostname service points at the wrong backend. Confirm it routes `HTTP` → `localhost:5678`. |
+| **Cloudflare error 1033 / 530** ("Origin DNS error") | The `n8n` DNS record is an **A/AAAA record, not a CNAME to `<tunnel-id>.cfargotunnel.com`**. Delete the A record and use the tunnel's Public Hostname (or add a proxied CNAME). Verify: `dig n8n.flynnpedroa.engineer CNAME +short`. |
+| Tunnel connected but "app not yet available" / content doesn't load | Route target mismatch: with `network_mode: service:n8n`, the dashboard public-hostname service must be `http://localhost:5678` (shared-namespace `localhost` reaches n8n). |
 | Stored credentials unreadable in n8n | `N8N_ENCRYPTION_KEY` changed; restore the previous value. |
 
 ## Resource requirements (RAM)
